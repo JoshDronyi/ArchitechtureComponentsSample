@@ -2,16 +2,24 @@ package com.example.android.todolist;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.LiveData;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProviders;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.android.todolist.database.TaskDatabase;
+import com.example.android.todolist.database.TaskEntry;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+
+import java.util.List;
 
 import static androidx.recyclerview.widget.DividerItemDecoration.VERTICAL;
 
@@ -24,10 +32,18 @@ public class MainActivity extends AppCompatActivity implements TaskAdapter.ItemC
     private RecyclerView mRecyclerView;
     private TaskAdapter mAdapter;
 
+    private TaskDatabase mDB;
+    private AppExecutor roomExecutor;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+
+        mDB = TaskDatabase.getInstance(getApplicationContext());
+        roomExecutor = AppExecutor.getInstance();
+
 
         // Set the RecyclerView to its corresponding view
         mRecyclerView = findViewById(R.id.recyclerViewTasks);
@@ -58,6 +74,18 @@ public class MainActivity extends AppCompatActivity implements TaskAdapter.ItemC
             @Override
             public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int swipeDir) {
                 // Here is where you'll implement swipe to delete
+                final List<TaskEntry> taskList = mAdapter.getTasks();
+                final int position =  viewHolder.getAdapterPosition();
+
+                roomExecutor.getDiskIO().execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        mDB.taskDAO().delete(taskList.get(position));
+                    }
+                });
+
+
+
             }
         }).attachToRecyclerView(mRecyclerView);
 
@@ -76,10 +104,32 @@ public class MainActivity extends AppCompatActivity implements TaskAdapter.ItemC
                 startActivity(addTaskIntent);
             }
         });
+
+        refreshList();
     }
 
     @Override
     public void onItemClickListener(int itemId) {
         // Launch AddTaskActivity adding the itemId as an extra in the intent
+        Intent intent = new Intent(MainActivity.this,AddTaskActivity.class);
+        intent.putExtra(AddTaskActivity.EXTRA_TASK_ID,itemId);
+        startActivity(intent);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+    }
+
+    private void refreshList() {
+
+        MainViewModel viewModel = ViewModelProviders.of(this).get(MainViewModel.class);
+        viewModel.getLiveEntries().observe(this, new Observer<List<TaskEntry>>() {
+            @Override
+            public void onChanged(List<TaskEntry> taskEntries) {
+                Log.e(TAG, "onChanged:  VIEWMODEL " );
+                mAdapter.setTasks(taskEntries);
+            }
+        });
     }
 }

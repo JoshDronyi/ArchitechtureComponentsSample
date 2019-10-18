@@ -16,6 +16,9 @@ android {
             minifyEnabled false
         }
     }
+    dataBinding{
+        enabled = true
+    }
 }
 
 dependencies {
@@ -23,12 +26,24 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.1.0'
 
     // Add RecyclerView dependency; must match SDK version
-    implementation 'androidx.recyclerview:recyclerview:1.1.0-beta04'
+    implementation 'androidx.recyclerview:recyclerview:1.1.0-beta05'
 
     // Add FAB dependency
     implementation 'com.google.android.material:material:1.1.0-beta01'
 
-    // TODO (1) Add Room dependencies
+    // COMPLETED (1) Add Room dependencies
+    def room_version = "2.2.0"
+
+    implementation "androidx.room:room-runtime:$room_version"
+    annotationProcessor "androidx.room:room-compiler:$room_version"
+
+
+    def lifecycle_version = "2.1.0"
+
+    // ViewModel and LiveData
+    implementation "androidx.lifecycle:lifecycle-extensions:$lifecycle_version"
+    annotationProcessor "androidx.lifecycle:lifecycle-compiler:$lifecycle_version"
+
 
 
 

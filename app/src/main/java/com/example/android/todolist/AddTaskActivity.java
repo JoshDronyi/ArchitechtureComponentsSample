@@ -2,14 +2,18 @@ package com.example.android.todolist;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.RadioGroup;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.databinding.DataBindingUtil;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProviders;
 
+import com.example.android.todolist.database.TaskDatabase;
 import com.example.android.todolist.database.TaskEntry;
+import com.example.android.todolist.databinding.ActivityAddTaskBinding;
 
 public class AddTaskActivity extends AppCompatActivity {
 
@@ -31,24 +35,59 @@ public class AddTaskActivity extends AppCompatActivity {
     Button mButton;
 
     private int mTaskId = DEFAULT_TASK_ID;
+    private TaskDatabase mDB;
+    private ActivityAddTaskBinding binding;
+    private AddTaskViewModel viewModel;
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_add_task);
+        binding = DataBindingUtil.setContentView(this, R.layout.activity_add_task);
 
-        initViews();
+        viewModel = ViewModelProviders
+                .of(this)
+                .get(AddTaskViewModel.class);
+
+        binding.setViewModel(viewModel);
+        binding.setLifecycleOwner(this);
+
+
+
+        mDB = TaskDatabase.getInstance(getApplicationContext());
+
 
         if (savedInstanceState != null && savedInstanceState.containsKey(INSTANCE_TASK_ID)) {
             mTaskId = savedInstanceState.getInt(INSTANCE_TASK_ID, DEFAULT_TASK_ID);
         }
 
+
+
         Intent intent = getIntent();
         if (intent != null && intent.hasExtra(EXTRA_TASK_ID)) {
-            mButton.setText(R.string.update_button);
+            binding.saveButton.setText(R.string.update_button);
             if (mTaskId == DEFAULT_TASK_ID) {
                 // populate the UI
+
+                mTaskId = intent.getIntExtra(EXTRA_TASK_ID, 0);
+                binding.saveButton.setText(R.string.update_button);
+
+                viewModel.getTaskById(this,mTaskId);
+
+                viewModel.getDataSaved().observe(this, new Observer<Boolean>() {
+                    @Override
+                    public void onChanged(Boolean aBoolean) {
+                        viewModel.getDataSaved().removeObserver(this);
+                        if (aBoolean) {
+                            finish();
+                        }
+                    }
+                });
+
+
             }
+
+
         }
+
     }
 
     @Override
@@ -61,16 +100,7 @@ public class AddTaskActivity extends AppCompatActivity {
      * initViews is called from onCreate to init the member variable views
      */
     private void initViews() {
-        mEditText = findViewById(R.id.editTextTaskDescription);
-        mRadioGroup = findViewById(R.id.radioGroup);
 
-        mButton = findViewById(R.id.saveButton);
-        mButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                onSaveButtonClicked();
-            }
-        });
     }
 
     /**
@@ -80,6 +110,7 @@ public class AddTaskActivity extends AppCompatActivity {
      */
     private void populateUI(TaskEntry task) {
 
+        setPriorityInViews(task.getPriority());
     }
 
     /**
@@ -87,7 +118,9 @@ public class AddTaskActivity extends AppCompatActivity {
      * It retrieves user input and inserts that new task data into the underlying database.
      */
     public void onSaveButtonClicked() {
-        // Not yet implemented
+
+        viewModel.SaveData();
+        finish();
     }
 
     /**
@@ -95,15 +128,15 @@ public class AddTaskActivity extends AppCompatActivity {
      */
     public int getPriorityFromViews() {
         int priority = 1;
-        int checkedId = ((RadioGroup) findViewById(R.id.radioGroup)).getCheckedRadioButtonId();
+        int checkedId = binding.radioGroup.getCheckedRadioButtonId();
         switch (checkedId) {
-            case R.id.radButton1:
+            case R.id.high:
                 priority = PRIORITY_HIGH;
                 break;
-            case R.id.radButton2:
+            case R.id.med:
                 priority = PRIORITY_MEDIUM;
                 break;
-            case R.id.radButton3:
+            case R.id.low:
                 priority = PRIORITY_LOW;
         }
         return priority;
@@ -117,13 +150,13 @@ public class AddTaskActivity extends AppCompatActivity {
     public void setPriorityInViews(int priority) {
         switch (priority) {
             case PRIORITY_HIGH:
-                ((RadioGroup) findViewById(R.id.radioGroup)).check(R.id.radButton1);
+                binding.radioGroup.check(R.id.high);
                 break;
             case PRIORITY_MEDIUM:
-                ((RadioGroup) findViewById(R.id.radioGroup)).check(R.id.radButton2);
+                binding.radioGroup.check(R.id.med);
                 break;
             case PRIORITY_LOW:
-                ((RadioGroup) findViewById(R.id.radioGroup)).check(R.id.radButton3);
+                binding.radioGroup.check(R.id.low);
         }
     }
 }
